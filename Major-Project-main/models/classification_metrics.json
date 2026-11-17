@@ -1,0 +1,149 @@
+{
+  "task": "Current Air Quality Category Classification",
+  "methodology_note": "AQI is estimated from hourly modelled PM2.5 and PM10 using CPCB breakpoints. These categories are rule-derived and do not represent clinical risk predictions.",
+  "classes": [
+    "Good",
+    "Moderate",
+    "Satisfactory"
+  ],
+  "features": [
+    "pm2_5",
+    "pm10"
+  ],
+  "results": [
+    {
+      "model": "Rule-Based Baseline (CPCB PM Breakpoints)",
+      "accuracy": 1.0,
+      "precision_macro": 1.0,
+      "recall_macro": 1.0,
+      "macro_f1": 1.0,
+      "training_time_sec": 0.001,
+      "test_samples": 293
+    },
+    {
+      "model": "Decision Tree",
+      "accuracy": 0.9829,
+      "precision_macro": 0.6512,
+      "recall_macro": 0.6583,
+      "macro_f1": 0.6547,
+      "training_time_sec": 0.0074,
+      "test_samples": 293
+    },
+    {
+      "model": "Random Forest",
+      "accuracy": 0.9829,
+      "precision_macro": 0.6512,
+      "recall_macro": 0.6583,
+      "macro_f1": 0.6547,
+      "training_time_sec": 0.1424,
+      "test_samples": 293
+    },
+    {
+      "model": "Gradient Boosting",
+      "accuracy": 0.9829,
+      "precision_macro": 0.6512,
+      "recall_macro": 0.6583,
+      "macro_f1": 0.6547,
+      "training_time_sec": 0.0757,
+      "test_samples": 293
+    }
+  ],
+  "confusion_matrices": {
+    "Rule-Based Baseline (CPCB PM Breakpoints)": {
+      "classes": [
+        "Good",
+        "Moderate",
+        "Satisfactory"
+      ],
+      "matrix": [
+        [
+          210,
+          0,
+          0
+        ],
+        [
+          0,
+          3,
+          0
+        ],
+        [
+          0,
+          0,
+          80
+        ]
+      ]
+    },
+    "Decision Tree": {
+      "classes": [
+        "Good",
+        "Moderate",
+        "Satisfactory"
+      ],
+      "matrix": [
+        [
+          210,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          3
+        ],
+        [
+          2,
+          0,
+          78
+        ]
+      ]
+    },
+    "Random Forest": {
+      "classes": [
+        "Good",
+        "Moderate",
+        "Satisfactory"
+      ],
+      "matrix": [
+        [
+          210,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          3
+        ],
+        [
+          2,
+          0,
+          78
+        ]
+      ]
+    },
+    "Gradient Boosting": {
+      "classes": [
+        "Good",
+        "Moderate",
+        "Satisfactory"
+      ],
+      "matrix": [
+        [
+          210,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          3
+        ],
+        [
+          2,
+          0,
+          78
+        ]
+      ]
+    }
+  }
+}

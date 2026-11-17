@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirGuard | IoT Air Quality & Health Risk Advisory</title>
+    <!-- Modern Typography: Google Fonts Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js for Interactive Visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <div class="brand-logo">
+                <span class="logo-icon">🌿</span>
+            </div>
+            <div>
+                <h1 class="brand-title">AirGuard IoT</h1>
+                <p class="brand-subtitle">Environmental Telemetry & Health Risk Advisory</p>
+            </div>
+        </div>
+        <div class="nav-status-group">
+            <div class="status-pill" id="locationPill">
+                <span class="pulse-dot green"></span>
+                <span>{{ location_name }}</span>
+            </div>
+            <div class="status-pill" id="telemetryPill">
+                <span class="status-indicator" id="telemetryStatusDot"></span>
+                <span id="telemetryStatusText">Telemetry: Syncing...</span>
+            </div>
+            <div class="status-pill" id="apiPill">
+                <span class="status-indicator green"></span>
+                <span>Open-Meteo: Connected</span>
+            </div>
+            <button id="refreshBtn" class="btn btn-outline" title="Refresh Live Data">
+                <span class="refresh-icon">↻</span> Refresh
+            </button>
+        </div>
+    </header>
+
+    <main class="dashboard-container">
+        <!-- Quick Nav Strip reflecting Sequential Flow -->
+        <nav class="quick-nav">
+            <a href="#health-assessment" class="active">1. User Health Assessment</a>
+            <a href="#risk-factor-results">2. Personal Risk Factor</a>
+            <a href="#telemetry-overview">3. Live Telemetry & Sensors</a>
+            <a href="#forecast-trends">4. 6-Hour Forecast & History</a>
+            <a href="#ml-predictions">5. ML Models & Predictions</a>
+        </nav>
+
+        <!-- ================================================================= -->
+        <!-- STEP 1: USER INFORMATION & RESPIRATORY HEALTH SCREENING          -->
+        <!-- ================================================================= -->
+        <section id="health-assessment" class="section-block">
+            <div class="section-header">
+                <div>
+                    <span class="step-badge">Step 1 of 3</span>
+                    <h2 class="section-title">Personal Environmental Health Assessment</h2>
+                    <p class="section-desc">Please provide your demographic information and respiratory health background to evaluate your exposure risk factor.</p>
+                </div>
+            </div>
+
+            <div class="assessment-form-card">
+                <form id="healthProfileForm">
+                    <div class="form-grid-two">
+                        <!-- Left: Demographic & Activity -->
+                        <div class="form-col">
+                            <h3 class="subsection-title">1. User Information</h3>
+
+                            <div class="form-group">
+                                <label class="form-label" for="ageGroupSelect">Age Category:</label>
+                                <select id="ageGroupSelect" class="form-select form-control">
+                                    <option value="adult" selected>Adult (18 – 64 years)</option>
+                                    <option value="child">Child / Adolescent (&lt; 18 years)</option>
+                                    <option value="older_adult">Older Adult (65+ years)</option>
+                                </select>
+                                <small class="form-help">Age alters vital lung compliance and minute ventilation volume.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Planned Exertion / Activity Level:</label>
+                                <div class="radio-pill-group">
+                                    <label class="radio-pill">
+                                        <input type="radio" name="activity_level" value="low">
+                                        <span>Rest / Low (Desk, Indoor Sitting)</span>
+                                    </label>
+                                    <label class="radio-pill">
+                                        <input type="radio" name="activity_level" value="moderate" checked>
+                                        <span>Moderate (Commuting, Walking)</span>
+                                    </label>
+                                    <label class="radio-pill">
+                                        <input type="radio" name="activity_level" value="outdoor_exercise">
+                                        <span>Vigorous (Outdoor Athletics, Running)</span>
+                                    </label>
+                                </div>
+                                <small class="form-help">Higher exertion increases deep respiratory particulate deposition.</small>
+                            </div>
+                        </div>
+
+                        <!-- Right: Respiratory & Cardiovascular Screening -->
+                        <div class="form-col">
+                            <h3 class="subsection-title">2. Respiratory & Health Status</h3>
+
+                            <div class="form-group">
+                                <label class="form-label" for="respiratoryConditionSelect">
+                                    Do you have any diagnosed respiratory or cardiovascular conditions?
+                                </label>
+                                <select id="respiratoryConditionSelect" class="form-select form-control">
+                                    <option value="none" selected>No Condition (Healthy / Baseline)</option>
+                                    <option value="asthma">Asthma (Airway Hyperreactivity)</option>
+                                    <option value="bronchitis">Chronic Bronchitis (Airway Inflammation)</option>
+                                    <option value="copd">COPD (Chronic Obstructive Pulmonary Disease)</option>
+                                    <option value="cardiovascular">Cardiovascular / Heart Disease</option>
+                                </select>
+                                <small class="form-help" id="conditionExplainer">Select 'No Condition' if you do not have a diagnosed chronic illness.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Current Respiratory Symptoms (if any):</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" id="sympWheeze" value="wheezing">
+                                        <span>Wheezing or chest tightness</span>
+                                    </label>
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" id="sympDyspnea" value="shortness_of_breath">
+                                        <span>Shortness of breath on light exertion</span>
+                                    </label>
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" id="sympCough" value="cough">
+                                        <span>Persistent morning cough / throat irritation</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions-bar">
+                        <button type="submit" class="btn btn-primary btn-lg" id="btnUpdateAdvisory">
+                            <span>🔍 Calculate My Personal Risk Factor &amp; Guidance</span>
+                        </button>
+                        <span class="session-privacy-note">🔒 Session-Only. Zero personal identifiable information (PII) is stored or transmitted.</span>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- STEP 2: PERSONAL RISK FACTOR & ACTIONABLE ADVISORY               -->
+        <!-- ================================================================= -->
+        <section id="risk-factor-results" class="section-block">
+            <div class="section-header">
+                <div>
+                    <span class="step-badge">Step 2 of 3</span>
+                    <h2 class="section-title">Personalized Health Risk Assessment &amp; Precautions</h2>
+                    <p class="section-desc">Computed risk factor score, vulnerability breakdown for your condition, and practical environmental precautions.</p>
+                </div>
+            </div>
+
+            <div class="advisory-display-card" id="advisoryDisplayCard">
+                <!-- Top Risk Banner with Gauge -->
+                <div class="advisory-status-banner" id="advisoryBanner">
+                    <div class="banner-flex-row">
+                        <div>
+                            <div class="banner-badge" id="advisoryRiskLevel">Low Risk</div>
+                            <h3 class="banner-title" id="advisoryCategoryTitle">Category: Good (CPCB AQI estimate: --)</h3>
+                            <p class="banner-desc" id="advisoryCategoryDesc">Air quality is satisfactory and poses little or no health risk.</p>
+                        </div>
+                        <div class="risk-gauge-box">
+                            <div class="gauge-title">Personal Risk Factor</div>
+                            <div class="gauge-number" id="riskFactorScore">--</div>
+                            <div class="gauge-meta" id="riskFactorMultiplier">Scale 0 - 100</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="advisory-body">
+                    <!-- Specific Vulnerability Explanation for That Factor -->
+                    <div class="factor-explanation-box" id="factorExplanationBox">
+                        <div class="factor-icon">⚕️</div>
+                        <div class="factor-content">
+                            <h4>Clinical Vulnerability Factor Analysis: <span id="advisoryProfileName">Healthy Adult</span></h4>
+                            <p id="factorExplanationText">
+                                Standard physiological baseline: Intact mucociliary clearance and normal alveolar gas diffusion capacity.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="action-columns">
+                        <div class="action-box">
+                            <div class="action-icon">🏃</div>
+                            <div class="action-content">
+                                <h4>Outdoor Activity Guidance</h4>
+                                <p id="advisoryOutdoor">Air quality is ideal for all outdoor activities.</p>
+                            </div>
+                        </div>
+                        <div class="action-box">
+                            <div class="action-icon">😷</div>
+                            <div class="action-content">
+                                <h4>Protective Equipment (Mask)</h4>
+                                <p id="advisoryMask">Not required for current conditions.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="precautions-list-box">
+                        <h4>Recommended Actionable Precautions:</h4>
+                        <ul id="advisoryPrecautionsList" class="precautions-list">
+                            <li>Enjoy outdoor recreation, sports, and natural room ventilation.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Educational & Medical Disclaimer -->
+                    <div class="disclaimer-box">
+                        <div class="disclaimer-header">
+                            <span class="disclaimer-icon">⚠️</span>
+                            <strong>Educational Prototype &amp; Clinical Disclaimer</strong>
+                        </div>
+                        <p id="disclaimerText">
+                            EDUCATIONAL ENVIRONMENTAL MONITORING PROTOTYPE: This advisory is generated for general informational and educational purposes based on ambient air quality estimates. It is NOT a medical device and does NOT provide clinical diagnoses, personalized medical risk probabilities, or treatment prescriptions. Individuals with respiratory, cardiovascular, or other underlying conditions should adhere strictly to their physician's medical action plan.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- STEP 3: LIVE HARDWARE TELEMETRY & ATMOSPHERIC SENSORS            -->
+        <!-- ================================================================= -->
+        <section id="telemetry-overview" class="section-block">
+            <div class="section-header">
+                <div>
+                    <span class="step-badge">Step 3 of 3</span>
+                    <h2 class="section-title">Live Hardware Telemetry &amp; Regional Atmosphere</h2>
+                    <p class="section-desc">Real-time local hardware measurements from NMIT Campus alongside Open-Meteo regional atmospheric estimates.</p>
+                </div>
+                <div class="last-updated" id="lastUpdatedTime">Updated: Loading...</div>
+            </div>
+
+            <div class="cards-grid">
+                <!-- Card 1: CPCB AQI estimate -->
+                <div class="metric-card highlight-card" id="cardAqi">
+                    <div class="card-header">
+                        <span class="badge badge-estimated">ESTIMATED (Open-Meteo)</span>
+                        <span class="card-tag">Regional Model</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="metric-label">CPCB Air Quality Index (estimated)</div>
+                        <div class="metric-value-row">
+                            <span class="metric-huge" id="valAqi">--</span>
+                            <span class="metric-badge-cat" id="badgeAqiCategory">Loading</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="barAqi" style="width: 20%; background-color: #10b981;"></div>
+                        </div>
+                        <div class="metric-footer-note">CPCB bands: 0-50 Good | 51-100 Satisfactory | 101-200 Moderate | 201-300 Poor | 301-400 Very Poor | 401-500 Severe. Indicative hourly estimate from PM2.5/PM10, not an official CPCB reading.</div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Particulates PM2.5 / PM10 -->
+                <div class="metric-card">
+                    <div class="card-header">
+                        <span class="badge badge-estimated">ESTIMATED (Open-Meteo)</span>
+                        <span class="card-tag">Aerosols</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="split-metric">
+                            <div class="sub-metric">
+                                <div class="metric-label">PM2.5 Concentration</div>
+                                <div class="metric-number"><span id="valPm25">--</span> <small>µg/m³</small></div>
+                                <div class="sub-meta">Fine Respirable Matter</div>
+                            </div>
+                            <div class="sub-divider"></div>
+                            <div class="sub-metric">
+                                <div class="metric-label">PM10 Concentration</div>
+                                <div class="metric-number"><span id="valPm10">--</span> <small>µg/m³</small></div>
+                                <div class="sub-meta">Coarse Particulate Matter</div>
+                            </div>
+                        </div>
+                        <div class="metric-footer-note">Model-based reanalysis from satellite &amp; atmospheric dispersion.</div>
+                    </div>
+                </div>
+
+                <!-- Card 3: DHT11 Sensor (Temperature & Humidity) -->
+                <div class="metric-card">
+                    <div class="card-header">
+                        <span class="badge badge-measured">MEASURED (ESP32 IoT)</span>
+                        <span class="card-tag">DHT11 Station</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="split-metric">
+                            <div class="sub-metric">
+                                <div class="metric-label">Ambient Temperature</div>
+                                <div class="metric-number"><span id="valTemp">--</span> <small>°C</small></div>
+                                <div class="sensor-health" id="statusTemp">Valid</div>
+                            </div>
+                            <div class="sub-divider"></div>
+                            <div class="sub-metric">
+                                <div class="metric-label">Relative Humidity</div>
+                                <div class="metric-number"><span id="valHum">--</span> <small>%</small></div>
+                                <div class="sensor-health" id="statusHum">Valid</div>
+                            </div>
+                        </div>
+                        <div class="metric-footer-note" id="sensorTimestamp">Latest hardware transmission: --</div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Gas Sensors (MQ-135 & MQ-7 Raw ADC) -->
+                <div class="metric-card">
+                    <div class="card-header">
+                        <span class="badge badge-measured">MEASURED (ESP32 IoT)</span>
+                        <span class="card-tag">Analog Electro-chemical</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="split-metric">
+                            <div class="sub-metric">
+                                <div class="metric-label">MQ-135 Gas Response</div>
+                                <div class="metric-number"><span id="valMq135">--</span> <small>ADC (0-4095)</small></div>
+                                <div class="sensor-health" id="statusMq135">Normal Response</div>
+                            </div>
+                            <div class="sub-divider"></div>
+                            <div class="sub-metric">
+                                <div class="metric-label">MQ-7 Response</div>
+                                <div class="metric-number"><span id="valMq7">--</span> <small>ADC (0-4095)</small></div>
+                                <div class="sensor-health" id="statusMq7">Field 4 Ready</div>
+                            </div>
+                        </div>
+                        <div class="metric-footer-note warning-note">
+                            ⚠️ Raw analog ADC voltage. Uncalibrated sensors — NOT equivalent to calibrated ppm or particulate matter.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geolocation & Monitoring Map -->
+            <div class="map-card-wrapper">
+                <div class="map-details">
+                    <div class="map-header">
+                        <h3>Campus Monitoring Deployment</h3>
+                        <span class="coords-badge">{{ latitude }}° N, {{ longitude }}° E</span>
+                    </div>
+                    <p class="map-text">
+                        Station deployed at NMIT Campus, Yelahanka, Bengaluru. Telemetry is streamed from an ESP32 microcontroller over Wi-Fi to ThingSpeak cloud storage and consolidated in this Flask framework.
+                    </p>
+                    <div class="hardware-specs-list">
+                        <div class="spec-item"><strong>Microcontroller:</strong> ESP32 DevKit V1 (Tensilica Xtensa Dual-Core)</div>
+                        <div class="spec-item"><strong>Sensors:</strong> DHT11 (Temp/Hum), MQ-135 (Air Quality), MQ-7 (CO Response)</div>
+                        <div class="spec-item"><strong>Local Display:</strong> 16x2 I2C LCD (0x27) with Non-Blocking Screen Rotation</div>
+                        <div class="spec-item"><strong>Telemetry Channel:</strong> ThingSpeak REST API + Blynk IoT Alert Cooldown</div>
+                    </div>
+                </div>
+                <div id="sensorMap" class="dashboard-map"></div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- 6-HOUR FORECAST & SENSOR HISTORY CHARTS                           -->
+        <!-- ================================================================= -->
+        <section id="forecast-trends" class="section-block">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Atmospheric Forecast &amp; Sensor Telemetry History</h2>
+                    <p class="section-desc">Comparing 6-hour baseline atmospheric forecasts and tracking live hardware timeseries.</p>
+                </div>
+            </div>
+
+            <!-- 6-Hour Forecast Chart -->
+            <div class="chart-container-card">
+                <div class="chart-header-row">
+                    <div class="chart-title-group">
+                        <h3>Projected Air Quality Index (Next 6 Hours)</h3>
+                        <span class="chart-subtitle">Baseline Model vs Autoregressive ML Prediction</span>
+                    </div>
+                    <div class="chart-legend-custom">
+                        <span class="legend-item"><span class="legend-color cyan"></span> Open-Meteo Baseline</span>
+                        <span class="legend-item"><span class="legend-color purple"></span> ML Trained Predictor</span>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrapper">
+                    <canvas id="forecastChart" height="90"></canvas>
+                </div>
+            </div>
+
+            <div class="forecast-cards-row" id="forecastCardsRow">
+                <!-- Dynamically populated via app.js -->
+            </div>
+
+            <!-- ThingSpeak History Chart -->
+            <div class="chart-container-card" style="margin-top: 24px;">
+                <div class="chart-header-row">
+                    <div class="chart-title-group">
+                        <h3>Live Hardware Telemetry Timeseries (ThingSpeak)</h3>
+                        <span class="chart-subtitle">Temperature (°C), Humidity (%), and MQ-135 Gas Response (ADC)</span>
+                    </div>
+                    <div class="filter-controls">
+                        <label for="historyLimitSelect">Display Feeds:</label>
+                        <select id="historyLimitSelect" class="form-select">
+                            <option value="20">Last 20 Feeds</option>
+                            <option value="50" selected>Last 50 Feeds</option>
+                            <option value="100">Last 100 Feeds</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrapper">
+                    <canvas id="historyChart" height="90"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- IN THE END: MACHINE LEARNING MODELS & PREDICTION RESULTS         -->
+        <!-- ================================================================= -->
+        <section id="ml-predictions" class="section-block">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Machine Learning Models &amp; Prediction Results</h2>
+                    <p class="section-desc">Live inference outputs and rigorous out-of-sample empirical evaluation on 60 days (1,464 hourly records) of campus air quality data.</p>
+                </div>
+                <span class="badge badge-predicted">EVALUATED ON UNSEEN TEST DATA</span>
+            </div>
+
+            <!-- Live ML Prediction Result Card -->
+            <div class="ml-live-result-card" id="mlLiveResultCard">
+                <div class="ml-result-header">
+                    <div class="ml-header-left">
+                        <span class="badge badge-predicted">LIVE MODEL INFERENCE</span>
+                        <h3>Real-Time Prediction Outputs for Current Ambient State</h3>
+                    </div>
+                    <div class="ml-status-pill">Active Models: Classifier &amp; Multi-Horizon Forecaster</div>
+                </div>
+                <div class="ml-result-body">
+                    <div class="ml-prediction-grid">
+                        <div class="ml-pred-box">
+                            <span class="ml-box-label">Task 1: Predicted CPCB AQI Category</span>
+                            <div class="ml-box-val" id="mlPredictedCategory">--</div>
+                            <span class="ml-box-sub" id="mlClassifierMethod">Trained Gradient Boosting Pipeline</span>
+                        </div>
+                        <div class="ml-pred-box">
+                            <span class="ml-box-label">Task 2: Next Hour (+1h) Forecast AQI</span>
+                            <div class="ml-box-val" id="mlPredH1">--</div>
+                            <span class="ml-box-sub">Autoregressive Linear Forecaster</span>
+                        </div>
+                        <div class="ml-pred-box">
+                            <span class="ml-box-label">Horizon +3h Forecast AQI</span>
+                            <div class="ml-box-val" id="mlPredH3">--</div>
+                            <span class="ml-box-sub">Multi-Horizon Autoregressive Model</span>
+                        </div>
+                        <div class="ml-pred-box">
+                            <span class="ml-box-label">Horizon +6h Forecast AQI</span>
+                            <div class="ml-box-val" id="mlPredH6">--</div>
+                            <span class="ml-box-sub">Multi-Horizon Autoregressive Model</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two-column benchmark display -->
+            <div class="benchmarks-grid" style="margin-top: 24px;">
+                <!-- Task 2: Multi-Horizon Forecasting Benchmark -->
+                <div class="benchmark-card">
+                    <div class="benchmark-header">
+                        <h3>Task 2: Multi-Horizon CPCB AQI Forecasting</h3>
+                        <span class="model-badge">Autoregressive Comparison</span>
+                    </div>
+                    <p class="benchmark-desc">
+                        Comparing persistence baseline against Linear Regression and tree ensembles across horizons h=1 to h=6 hours ahead.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="benchmark-table" id="forecastBenchmarkTable">
+                            <thead>
+                                <tr>
+                                    <th>Horizon</th>
+                                    <th>Model</th>
+                                    <th>MAE</th>
+                                    <th>RMSE</th>
+                                    <th>R² Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated dynamically from evaluation_results.json -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Task 1: Category Classification Benchmark -->
+                <div class="benchmark-card">
+                    <div class="benchmark-header">
+                        <h3>Task 1: Air Quality Category Classification</h3>
+                        <span class="model-badge">CPCB Breakpoint Mapping</span>
+                    </div>
+                    <p class="benchmark-desc">
+                        Evaluating Decision Tree, Random Forest, and Gradient Boosting against the CPCB particulate breakpoint baseline.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="benchmark-table" id="classificationBenchmarkTable">
+                            <thead>
+                                <tr>
+                                    <th>Algorithm</th>
+                                    <th>Accuracy</th>
+                                    <th>Precision</th>
+                                    <th>Recall</th>
+                                    <th>Macro-F1</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated dynamically from classification_metrics.json -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Viva Defense Technical Note -->
+            <div class="viva-note-card">
+                <div class="viva-icon">💡</div>
+                <div class="viva-content">
+                    <h4>Viva Defense Key Technical Insights</h4>
+                    <ul>
+                        <li><strong>Autoregressive Trend Continuity:</strong> For short horizons (h=1h), Linear Regression achieved MAE of 4.11 and R² of 0.750, matching or slightly outperforming persistence. Non-linear tree ensembles suffered from distribution shifts when extrapolating unseen multi-hour trends.</li>
+                        <li><strong>Rule Reconstruction vs Disease Discovery:</strong> Air quality category classification learns categories defined by CPCB particulate concentration intervals. The classifier approximates the environmental standard rather than discovering an unobserved biological mechanism.</li>
+                        <li><strong>Epidemiological Scope:</strong> State-level annual respiratory disease rates cannot validate individual real-time campus health risk. Therefore, health advisories rely on transparent, rule-based medical vulnerability stratifications.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-inner">
+            <p><strong>AirGuard IoT Framework</strong> — BTech Major Project</p>
+            <p>Department of Information Science &amp; Engineering | NMIT, Bengaluru</p>
+            <p class="footer-meta">ESP32 Telemetry via ThingSpeak • Open-Meteo Atmospheric API • Machine Learning Autoregression</p>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Custom Application JS -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+
+# Python virtual environment and cache
+venv/
+__pycache__/
+*.py[cod]
+
+# Secrets — NEVER commit these
+.env
+secrets.h
+Air_Quality_Monitor/secrets.h
+
+# Saved models (large binary files)
+*.joblib
+models/*.joblib
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Original backup (created by audit)
+_original_backup/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/

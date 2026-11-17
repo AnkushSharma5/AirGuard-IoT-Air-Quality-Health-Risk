@@ -1,0 +1,16 @@
+# Core
+flask>=3.0
+python-dotenv>=1.0
+requests>=2.31
+
+# Data & ML
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.3
+joblib>=1.3
+
+# Dataset preparation (only needed if re-joining from parquet)
+pyarrow>=14.0
+
+# Testing
+pytest>=7.4
